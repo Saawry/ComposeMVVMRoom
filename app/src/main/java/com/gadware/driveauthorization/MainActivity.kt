@@ -27,10 +27,26 @@ class MainActivity : ComponentActivity() {
         val dao = AppDatabase.getDatabase(this).nameDao()
         val repository = NameRepository(dao)
         val factory = NameViewModelFactory(repository)
-        //val viewModel = NameViewModel(NameRepository(AppDatabase.getDatabase(this).nameDao()))
+        
+        // Backup Feature Dependencies
+        val authManager = com.gadware.driveauthorization.auth.GoogleAuthManager(applicationContext)
+        val backupRepository = com.gadware.driveauthorization.data.BackupRepository(applicationContext, AppDatabase.getDatabase(this), authManager)
+        val backupViewModelFactory = com.gadware.driveauthorization.ui.backup.BackupViewModelFactory(backupRepository, authManager)
+
         setContent {
-            val viewModel: NameViewModel = viewModel(factory = factory)
-            InsertName(viewModel)
+            Column(Modifier.fillMaxSize()) {
+                val viewModel: NameViewModel = viewModel(factory = factory)
+                // Existing content (assuming takes up some space, or we wrap it)
+                // If InsertName takes full screen, we might need a better layout.
+                // For now, we put them in a Column.
+                Column(Modifier.weight(1f)) {
+                     InsertName(viewModel)
+                }
+                
+                // Backup Screen
+                val backupViewModel: com.gadware.driveauthorization.ui.backup.BackupViewModel = viewModel(factory = backupViewModelFactory)
+                com.gadware.driveauthorization.ui.backup.BackupScreen(backupViewModel)
+            }
         }
     }
 }

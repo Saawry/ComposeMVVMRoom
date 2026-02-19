@@ -44,6 +44,12 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 configurations.all {
     exclude(group = "com.intellij", module = "annotations")
@@ -63,6 +69,16 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.coroutines)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+
+    // Google Auth & Drive
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.id)
+    implementation(libs.play.services.auth)
+
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.api.services.drive)
+    implementation(libs.google.http.client.gson)
 
     ksp(libs.room.compiler)
     implementation(libs.lifecycle)

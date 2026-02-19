@@ -16,6 +16,12 @@ composeBom = "2024.09.00"
 lifecycleViewmodelKtx = "2.9.4"
 room="2.7.0-alpha11"
 coroutines="1.10.1"
+credentials="1.5.0-rc01"
+googleid="1.1.1"
+playServicesAuth="21.3.0"
+googleApiClient="2.7.0"
+googleApiClientDrive="v3-rev20241027-2.0.0"
+googleHttpClientGson="1.45.3"
 
 
 [libraries]
@@ -47,6 +53,16 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 coroutines={group = "org.jetbrains.kotlinx",name = "kotlinx-coroutines-android", version.ref = "coroutines"}
 
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+
+# Google Auth & Drive
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+google-id = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
+
+google-api-client-android = { module = "com.google.api-client:google-api-client-android", version.ref = "googleApiClient" }
+google-api-services-drive = { module = "com.google.apis:google-api-services-drive", version.ref = "googleApiClientDrive" }
+google-http-client-gson = { module = "com.google.http-client:google-http-client-gson", version.ref = "googleHttpClientGson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
