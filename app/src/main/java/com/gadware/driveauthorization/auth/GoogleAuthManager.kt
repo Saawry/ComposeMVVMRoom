@@ -25,7 +25,7 @@ class GoogleAuthManager(private val context: Context) {
     // User must create a "Web application" Client ID in Google Cloud Console even for Android apps when using CredMan
     // This is required for GetGoogleIdOption.
     // Replace this with your actual Web Client ID
-    private val webClientId = "YOUR_WEB_CLIENT_ID_placeholder" 
+    private val webClientId = "96207429486-e1m42mq4vtkb6d86rd8vprj3ggjljipo.apps.googleusercontent.com"
 
     suspend fun signIn(activity: Activity): Result<String> {
         val googleIdOption = GetGoogleIdOption.Builder()
