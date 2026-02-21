@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "359111832995",
+    "project_id": "driveauthorization-35eea",
+    "storage_bucket": "driveauthorization-35eea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:359111832995:android:98a1e2fe08afe16f00d616",
+        "android_client_info": {
+          "package_name": "com.gadware.driveauthorization"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsrpWHQrOZJwzU8Fc9q7nrCUPtpLgueqE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

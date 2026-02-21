@@ -4,8 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    alias(libs.plugins.google.services)
 }
-
 android {
     kotlin {
         jvmToolchain(11)
@@ -80,6 +80,15 @@ dependencies {
     implementation(libs.google.api.client.android)
     implementation(libs.google.api.services.drive)
     implementation(libs.google.http.client.gson)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(enforcedPlatform("io.grpc:grpc-bom:1.62.2"))
+    implementation("io.grpc:grpc-okhttp")
+    implementation("io.grpc:grpc-core")
+    implementation("io.grpc:grpc-api")
+    implementation("io.grpc:grpc-android")
+    implementation("io.grpc:grpc-stub")
 
     ksp(libs.room.compiler)
     implementation(libs.lifecycle)

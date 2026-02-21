@@ -22,6 +22,8 @@ playServicesAuth="21.3.0"
 googleApiClient="2.7.0"
 googleApiClientDrive="v3-rev20241027-2.0.0"
 googleHttpClientGson="1.45.3"
+firebaseBom="33.7.0"
+googleServices="4.4.2"
 
 
 [libraries]
@@ -64,9 +66,13 @@ google-api-client-android = { module = "com.google.api-client:google-api-client-
 google-api-services-drive = { module = "com.google.apis:google-api-services-drive", version.ref = "googleApiClientDrive" }
 google-http-client-gson = { module = "com.google.http-client:google-http-client-gson", version.ref = "googleHttpClientGson" }
 
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 
