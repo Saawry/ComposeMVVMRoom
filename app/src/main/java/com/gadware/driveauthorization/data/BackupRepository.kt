@@ -72,4 +72,57 @@ class BackupRepository(
             Result.failure(e)
         }
     }
+
+    suspend fun performRestore(email: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val driveHelper = DriveServiceHelper(context, email)
+            
+            val existingId = driveHelper.findBackupFile()
+            if (existingId == null) {
+                return@withContext Result.success(false)
+            }
+
+            val cacheDir = context.cacheDir
+            val zipFile = File(cacheDir, "downloaded_backup.zip")
+            driveHelper.downloadBackup(existingId, zipFile)
+
+            val tempDir = File(cacheDir, "restore_temp")
+            if (tempDir.exists()) tempDir.deleteRecursively()
+            tempDir.mkdirs()
+
+            ZipUtils.unzipFiles(zipFile, tempDir)
+
+            database.close()
+
+            val dbName = "name_db"
+            val dbFile = context.getDatabasePath(dbName)
+            val walFile = context.getDatabasePath("$dbName-wal")
+            val shmFile = context.getDatabasePath("$dbName-shm")
+
+            val tempDb = File(tempDir, dbFile.name)
+            if (tempDb.exists()) tempDb.copyTo(dbFile, overwrite = true)
+            
+            val tempWal = File(tempDir, walFile.name)
+            if (tempWal.exists()) {
+                tempWal.copyTo(walFile, overwrite = true)
+            } else if (walFile.exists()) {
+                walFile.delete()
+            }
+
+            val tempShm = File(tempDir, shmFile.name)
+            if (tempShm.exists()) {
+                tempShm.copyTo(shmFile, overwrite = true)
+            } else if (shmFile.exists()) {
+                shmFile.delete()
+            }
+
+            zipFile.delete()
+            tempDir.deleteRecursively()
+
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e("BackupRepository", "Restore failed", e)
+            Result.failure(e)
+        }
+    }
 }

@@ -56,4 +56,11 @@ class DriveServiceHelper(context: Context, email: String) {
             file.id
         }
     }
+
+    suspend fun downloadBackup(fileId: String, destFile: File) = withContext(Dispatchers.IO) {
+        val outputStream = java.io.FileOutputStream(destFile)
+        driveService.files().get(fileId)
+            .executeMediaAndDownloadTo(outputStream)
+        outputStream.close()
+    }
 }

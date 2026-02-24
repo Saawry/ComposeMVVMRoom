@@ -40,11 +40,42 @@ class GoogleAuthManager(private val context: Context) {
 
         return try {
             val result = credentialManager.getCredential(activity, request)
+            
+            // Credential Manager returns a CustomCredential for Google Sign-In
             when (val credential = result.credential) {
+                is androidx.credentials.CustomCredential -> {
+                    if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                        try {
+                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                            // We need the actual email address, not the Google Account numeric ID.
+                            // The ID Token is a JWT containing the email in its payload.
+                            val idToken = googleIdTokenCredential.idToken
+                            val payloadBase64 = idToken.split(".")[1]
+                            val payloadJson = String(android.util.Base64.decode(payloadBase64, android.util.Base64.URL_SAFE))
+                            val jsonObject = org.json.JSONObject(payloadJson)
+                            val email = jsonObject.getString("email")
+                            Result.success(email)
+                        } catch (e: Exception) {
+                            Log.e("GoogleAuthManager", "Failed to parse JWT", e)
+                            Result.failure(e)
+                        }
+                    } else {
+                        Result.failure(Exception("Unexpected custom credential type: ${credential.type}"))
+                    }
+                }
                 is GoogleIdTokenCredential -> {
-                    // We only need the ID (email) to proceed with Drive Auth
-                    val email = credential.id
-                    Result.success(email)
+                    // Fallback in case the library returns the subtype directly
+                    try {
+                        val idToken = credential.idToken
+                        val payloadBase64 = idToken.split(".")[1]
+                        val payloadJson = String(android.util.Base64.decode(payloadBase64, android.util.Base64.URL_SAFE))
+                        val jsonObject = org.json.JSONObject(payloadJson)
+                        val email = jsonObject.getString("email")
+                        Result.success(email)
+                    } catch (e: Exception) {
+                        Log.e("GoogleAuthManager", "Failed to parse JWT", e)
+                        Result.failure(e)
+                    }
                 }
                 else -> {
                     Result.failure(Exception("Unexpected credential type: ${credential.type}"))

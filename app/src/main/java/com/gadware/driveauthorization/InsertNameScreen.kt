@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gadware.driveauthorization.room.NameEntity
 import com.gadware.driveauthorization.room.NameViewModel
@@ -65,18 +66,6 @@ fun InsertName(viewModel: NameViewModel) {
             Text("Save")
         }
 
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        LazyColumn{
-            items(names){ item->
-                Text(text = item.name)
-                VerticalDivider(
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
+        // Removed LazyColumn as it is now in HomeScreen
     }
 }

@@ -25,4 +25,23 @@ object ZipUtils {
             }
         }
     }
+
+    fun unzipFiles(zipFile: File, extractDir: File) {
+        if (!extractDir.exists()) extractDir.mkdirs()
+        java.util.zip.ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zin ->
+            var entry = zin.nextEntry
+            while (entry != null) {
+                val file = File(extractDir, entry.name)
+                // Basic path traversal prevention
+                if (!file.canonicalPath.startsWith(extractDir.canonicalPath)) {
+                    throw SecurityException("Invalid zip entry: ${entry.name}")
+                }
+                FileOutputStream(file).use { out ->
+                    zin.copyTo(out)
+                }
+                zin.closeEntry()
+                entry = zin.nextEntry
+            }
+        }
+    }
 }
