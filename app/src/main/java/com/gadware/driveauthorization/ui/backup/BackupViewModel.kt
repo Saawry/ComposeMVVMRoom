@@ -2,6 +2,7 @@ package com.gadware.driveauthorization.ui.backup
 
 import android.app.Activity
 import android.app.PendingIntent
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -93,6 +94,7 @@ class BackupViewModel(
         if (result.isSuccess) {
             uiState = BackupUiState(success = true, statusText = "Backup completed successfully")
         } else {
+            Log.d("BackupOperation", "backupViewmodel: failed --${result.exceptionOrNull()?.message}")
             uiState = BackupUiState(error = "Backup failed: ${result.exceptionOrNull()?.message}")
         }
     }

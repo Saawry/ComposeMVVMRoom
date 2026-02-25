@@ -1,6 +1,7 @@
 package com.gadware.driveauthorization.drive
 
 import android.content.Context
+import android.util.Log
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -32,14 +33,15 @@ class DriveServiceHelper(context: Context, email: String) {
             .setSpaces("appDataFolder")
             .setFields("files(id, name)")
             .execute()
-
+        Log.d("PerformRestore", "DriveServiceHelper: find backup file --size- ${fileList.size}")
+        Log.d("PerformRestore", "DriveServiceHelper: find backup file --id- ${fileList.files.firstOrNull()?.id}")
         fileList.files.firstOrNull()?.id
     }
 
     suspend fun uploadBackup(localFile: File, existingFileId: String?): String = withContext(Dispatchers.IO) {
         val fileMetadata = com.google.api.services.drive.model.File()
         fileMetadata.name = "backup.zip"
-        
+        Log.d("BackupOperation", "DriveServiceHelper: localFile and existingFileId --${localFile.name} --${existingFileId}")
         val mediaContent = FileContent("application/zip", localFile)
 
         if (existingFileId != null) {
@@ -53,11 +55,14 @@ class DriveServiceHelper(context: Context, email: String) {
             val file = driveService.files().create(fileMetadata, mediaContent)
                 .setFields("id")
                 .execute()
+            Log.d("BackupOperation", "DriveServiceHelper: existingFileId is null, new file name and id --${file.name}-${file.id}")
             file.id
+
         }
     }
 
     suspend fun downloadBackup(fileId: String, destFile: File) = withContext(Dispatchers.IO) {
+        Log.d("PerformRestore", "downloadBackup: fileId --${fileId}-- destFile ${destFile.name} ")
         val outputStream = java.io.FileOutputStream(destFile)
         driveService.files().get(fileId)
             .executeMediaAndDownloadTo(outputStream)

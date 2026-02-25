@@ -10,6 +10,7 @@ import com.gadware.driveauthorization.utils.ZipUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.math.log
 
 class BackupRepository(
     private val context: Context,
@@ -39,13 +40,20 @@ class BackupRepository(
 
             if (filesToZip.isEmpty()) {
                 return@withContext Result.failure(Exception("No database files found"))
+            }else{
+                Log.d("BackupOperation", "backupRepository --files to zip: not empty.")
             }
 
             // 4. Copy to Cache and Zip
-            val cacheDir = context.cacheDir
-            val backupDir = File(cacheDir, "backup_temp")
-            if (backupDir.exists()) backupDir.deleteRecursively()
-            backupDir.mkdirs()
+            try {
+                val cacheDir = context.cacheDir
+                val backupDir = File(cacheDir, "backup_temp")
+                if (backupDir.exists()) {
+                    backupDir.deleteRecursively()
+                } else {
+                    Log.d("BackupOperation", "backupRepository-- backup directory not exists")
+                }
+                backupDir.mkdirs()
 
             // We copy files to a temp dir first to avoid file locking issues during zip if possible,
             // though with checkpoint they should be safe to read.
@@ -60,15 +68,19 @@ class BackupRepository(
 
             // 5. Upload to Drive
             val existingId = driveHelper.findBackupFile()
+            Log.d("BackupOperation", "backupRepositort: existing id --${existingId}")
             driveHelper.uploadBackup(zipFile, existingId)
 
             // Cleanup
             backupDir.deleteRecursively()
             zipFile.delete()
-
+            }catch (e: Exception){
+                Log.d("BackupOperation", "backupRepository: copy cache--exception --${e}")
+            }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e("BackupRepository", "Backup failed", e)
+            //Log.e("BackupRepository", "Backup failed", e)
+            Log.d("BackupOperation", "Backup Repository: exception --${e}")
             Result.failure(e)
         }
     }
@@ -78,6 +90,7 @@ class BackupRepository(
             val driveHelper = DriveServiceHelper(context, email)
             
             val existingId = driveHelper.findBackupFile()
+            Log.d("PerformRestore", "BackupRepository: existing id --${existingId}")
             if (existingId == null) {
                 return@withContext Result.success(false)
             }
@@ -116,8 +129,12 @@ class BackupRepository(
                 shmFile.delete()
             }
 
-            zipFile.delete()
-            tempDir.deleteRecursively()
+            try {
+                zipFile.delete()
+                tempDir.deleteRecursively()
+            } catch (e: Exception) {
+                Log.d("PerformRestore", "cleanup exception: ${e.message}")
+            }
 
             Result.success(true)
         } catch (e: Exception) {
