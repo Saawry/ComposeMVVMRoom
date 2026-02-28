@@ -52,9 +52,8 @@ class MainActivity : ComponentActivity() {
         
         // Backup Feature Dependencies
         val backupRepository = com.gadware.driveauthorization.data.BackupRepository(applicationContext, AppDatabase.getDatabase(this), authManager)
-        val backupViewModelFactory = com.gadware.driveauthorization.ui.backup.BackupViewModelFactory(backupRepository, authManager)
-
         val sessionManager = SessionManager(applicationContext)
+        val backupViewModelFactory = com.gadware.driveauthorization.ui.backup.BackupViewModelFactory(backupRepository, authManager, userRepository, sessionManager)
 
         // Login Feature
         val loginViewModelFactory = LoginViewModelFactory(authManager, userRepository, backupRepository)

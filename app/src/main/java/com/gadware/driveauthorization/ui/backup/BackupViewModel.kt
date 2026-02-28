@@ -12,6 +12,8 @@ import androidx.lifecycle.viewModelScope
 import com.gadware.driveauthorization.auth.AuthResolutionRequiredException
 import com.gadware.driveauthorization.auth.GoogleAuthManager
 import com.gadware.driveauthorization.data.BackupRepository
+import com.gadware.driveauthorization.data.SessionManager
+import com.gadware.driveauthorization.data.UserRepository
 import kotlinx.coroutines.launch
 
 enum class PendingAction { BACKUP, RESTORE }
@@ -31,7 +33,9 @@ data class BackupUiState(
 
 class BackupViewModel(
     private val repository: BackupRepository,
-    private val authManager: GoogleAuthManager
+    private val authManager: GoogleAuthManager,
+    private val userRepository: UserRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     var uiState by mutableStateOf(BackupUiState())
@@ -41,17 +45,31 @@ class BackupViewModel(
         viewModelScope.launch {
             uiState = BackupUiState(isBackingUp = true, statusText = "Checking authentication...", pendingAction = PendingAction.BACKUP)
             
-            // 1. Sign In / Get Email
-            val signInResult = authManager.signIn(activity)
-            if (signInResult.isFailure) {
-                uiState = BackupUiState(error = "Sign-in failed: ${signInResult.exceptionOrNull()?.message}")
+            val userEmail = sessionManager.getUserEmail()
+            if (userEmail == null) {
+                uiState = BackupUiState(error = "No user logged in")
                 return@launch
             }
-            val email = signInResult.getOrThrow()
+
+            val userProfile = userRepository.getUserProfile(userEmail)
+            var driveEmail = userProfile?.driveEmail
+
+            if (driveEmail.isNullOrBlank()) {
+                // 1. Sign In / Get Email if not cached
+                uiState = uiState.copy(statusText = "Please select an account for Drive")
+                val signInResult = authManager.signIn(activity)
+                if (signInResult.isFailure) {
+                    uiState = BackupUiState(error = "Sign-in failed: ${signInResult.exceptionOrNull()?.message}")
+                    return@launch
+                }
+                driveEmail = signInResult.getOrThrow()
+                // Save it for next time
+                userRepository.updateDriveEmail(userEmail, driveEmail)
+            }
 
             // 2. Request Drive Access
             uiState = uiState.copy(statusText = "Checking permissions...")
-            val authResult = authManager.requestDriveAccess(activity, email)
+            val authResult = authManager.requestDriveAccess(activity, driveEmail)
             
             if (authResult.isFailure) {
                  val exception = authResult.exceptionOrNull()
@@ -71,7 +89,7 @@ class BackupViewModel(
 
             // 3. Perform Backup
             val accessToken = authResult.getOrThrow()
-            performBackupInternal(email, accessToken)
+            performBackupInternal(driveEmail, accessToken)
         }
     }
 
@@ -114,17 +132,31 @@ class BackupViewModel(
         viewModelScope.launch {
             uiState = BackupUiState(isRestoring = true, restoreStatusText = "Checking authentication...", pendingAction = PendingAction.RESTORE)
             
-            // 1. Sign In / Get Email
-            val signInResult = authManager.signIn(activity)
-            if (signInResult.isFailure) {
-                uiState = BackupUiState(restoreError = "Sign-in failed: ${signInResult.exceptionOrNull()?.message}")
+            val userEmail = sessionManager.getUserEmail()
+            if (userEmail == null) {
+                uiState = BackupUiState(restoreError = "No user logged in")
                 return@launch
             }
-            val email = signInResult.getOrThrow()
+
+            val userProfile = userRepository.getUserProfile(userEmail)
+            var driveEmail = userProfile?.driveEmail
+
+            if (driveEmail.isNullOrBlank()) {
+                // 1. Sign In / Get Email if not cached
+                uiState = uiState.copy(restoreStatusText = "Please select an account for Drive")
+                val signInResult = authManager.signIn(activity)
+                if (signInResult.isFailure) {
+                    uiState = BackupUiState(restoreError = "Sign-in failed: ${signInResult.exceptionOrNull()?.message}")
+                    return@launch
+                }
+                driveEmail = signInResult.getOrThrow()
+                // Save it for next time
+                userRepository.updateDriveEmail(userEmail, driveEmail)
+            }
 
             // 2. Request Drive Access
             uiState = uiState.copy(restoreStatusText = "Checking permissions...")
-            val authResult = authManager.requestDriveAccess(activity, email)
+            val authResult = authManager.requestDriveAccess(activity, driveEmail)
             
             if (authResult.isFailure) {
                  val exception = authResult.exceptionOrNull()
@@ -144,7 +176,7 @@ class BackupViewModel(
 
             // 3. Perform Restore
             val accessToken = authResult.getOrThrow()
-            performRestoreInternal(email, accessToken)
+            performRestoreInternal(driveEmail, accessToken)
         }
     }
 
@@ -166,12 +198,14 @@ class BackupViewModel(
 
 class BackupViewModelFactory(
     private val repository: BackupRepository,
-    private val authManager: GoogleAuthManager
+    private val authManager: GoogleAuthManager,
+    private val userRepository: UserRepository,
+    private val sessionManager: SessionManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(BackupViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return BackupViewModel(repository, authManager) as T
+            return BackupViewModel(repository, authManager, userRepository, sessionManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

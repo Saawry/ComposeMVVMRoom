@@ -6,6 +6,7 @@ data class UserProfile(
     val shopName: String = "",
     val phoneNumber: String = "",
     val address: String = "",
+    val driveEmail: String = "",
     val regDate: Long = 0L,
     val userType: String = "free",
     val status: String = "pending",

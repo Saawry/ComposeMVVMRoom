@@ -46,8 +46,11 @@ class LoginViewModel(
             // Check if registered
             val isRegistered = userRepository.isUserRegistered(email)
             if (isRegistered) {
+                val userProfile = userRepository.getUserProfile(email)
+                val driveEmail = userProfile?.driveEmail?.takeIf { it.isNotBlank() } ?: email
+
                 loginState = LoginState.LoadingMessage("Checking Drive permissions...")
-                val authResult = authManager.requestDriveAccess(activity, email)
+                val authResult = authManager.requestDriveAccess(activity, driveEmail)
                 
                 if (authResult.isFailure) {
                     val exception = authResult.exceptionOrNull()
@@ -70,8 +73,11 @@ class LoginViewModel(
     fun onAuthResolutionResult(resultOk: Boolean, email: String, activity: Activity) {
         viewModelScope.launch {
             if (resultOk) {
+                val userProfile = userRepository.getUserProfile(email)
+                val driveEmail = userProfile?.driveEmail?.takeIf { it.isNotBlank() } ?: email
+
                 loginState = LoginState.LoadingMessage("Checking Drive permissions...")
-                val authResult = authManager.requestDriveAccess(activity, email)
+                val authResult = authManager.requestDriveAccess(activity, driveEmail)
                 if (authResult.isSuccess) {
                     performRestoreAndProceed(email, authResult.getOrThrow())
                 } else {
