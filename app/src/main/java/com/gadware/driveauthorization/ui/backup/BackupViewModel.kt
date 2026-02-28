@@ -14,12 +14,19 @@ import com.gadware.driveauthorization.auth.GoogleAuthManager
 import com.gadware.driveauthorization.data.BackupRepository
 import kotlinx.coroutines.launch
 
+enum class PendingAction { BACKUP, RESTORE }
+
 data class BackupUiState(
     val isBackingUp: Boolean = false,
     val statusText: String = "Idle",
     val error: String? = null,
     val success: Boolean = false,
-    val authResolutionIntent: PendingIntent? = null
+    val isRestoring: Boolean = false,
+    val restoreStatusText: String = "Idle",
+    val restoreError: String? = null,
+    val restoreSuccess: Boolean = false,
+    val authResolutionIntent: PendingIntent? = null,
+    val pendingAction: PendingAction? = null
 )
 
 class BackupViewModel(
@@ -32,7 +39,7 @@ class BackupViewModel(
 
     fun onBackupClicked(activity: Activity) {
         viewModelScope.launch {
-            uiState = BackupUiState(isBackingUp = true, statusText = "Checking authentication...")
+            uiState = BackupUiState(isBackingUp = true, statusText = "Checking authentication...", pendingAction = PendingAction.BACKUP)
             
             // 1. Sign In / Get Email
             val signInResult = authManager.signIn(activity)
@@ -53,10 +60,11 @@ class BackupViewModel(
                      uiState = uiState.copy(
                          isBackingUp = false, 
                          statusText = "Permission required",
-                         authResolutionIntent = exception.pendingIntent
+                         authResolutionIntent = exception.pendingIntent,
+                         pendingAction = PendingAction.BACKUP
                      )
                  } else {
-                     uiState = BackupUiState(error = "Permission check failed: ${exception?.message}")
+                     uiState = BackupUiState(error = "Permission check failed: ${exception?.message}", pendingAction = PendingAction.BACKUP)
                  }
                  return@launch
             }
@@ -68,21 +76,23 @@ class BackupViewModel(
     }
 
     fun onAuthResolutionResult(resultOk: Boolean, activity: Activity) {
-        // Clear the intent
-        uiState = uiState.copy(authResolutionIntent = null)
+        val action = uiState.pendingAction
+        // Clear the intent and action
+        uiState = uiState.copy(authResolutionIntent = null, pendingAction = null)
         
         if (resultOk) {
-            // Retry the backup flow (we assume we have the email, but safer to start over or store email)
-            // Ideally we re-fetch email or store it in state. 
-            // Only restarting if we have the email.
-            // For simplicity, let's just ask user to click backup again OR restart flow?
-            // Better UX: Restart flow automatically.
-            // But we need the activity ref again to get email (CredMan). 
-            // Actually, if resultOk, we are authorized. We still need the email for the Repository.
-            // I'll call onBackupClicked again using the passed activity.
-             onBackupClicked(activity)
+            // Retry the appropriate flow
+            if (action == PendingAction.RESTORE) {
+                onRestoreClicked(activity)
+            } else {
+                onBackupClicked(activity)
+            }
         } else {
-            uiState = BackupUiState(error = "Permission denied by user")
+            if (action == PendingAction.RESTORE) {
+                uiState = BackupUiState(restoreError = "Permission denied by user")
+            } else {
+                uiState = BackupUiState(error = "Permission denied by user")
+            }
         }
     }
     
@@ -97,6 +107,59 @@ class BackupViewModel(
         } else {
             Log.d("BackupOperation", "backupViewmodel: failed --${result.exceptionOrNull()?.message}")
             uiState = BackupUiState(error = "Backup failed: ${result.exceptionOrNull()?.message}")
+        }
+    }
+
+    fun onRestoreClicked(activity: Activity) {
+        viewModelScope.launch {
+            uiState = BackupUiState(isRestoring = true, restoreStatusText = "Checking authentication...", pendingAction = PendingAction.RESTORE)
+            
+            // 1. Sign In / Get Email
+            val signInResult = authManager.signIn(activity)
+            if (signInResult.isFailure) {
+                uiState = BackupUiState(restoreError = "Sign-in failed: ${signInResult.exceptionOrNull()?.message}")
+                return@launch
+            }
+            val email = signInResult.getOrThrow()
+
+            // 2. Request Drive Access
+            uiState = uiState.copy(restoreStatusText = "Checking permissions...")
+            val authResult = authManager.requestDriveAccess(activity, email)
+            
+            if (authResult.isFailure) {
+                 val exception = authResult.exceptionOrNull()
+                 if (exception is AuthResolutionRequiredException) {
+                     // Need user approval
+                     uiState = uiState.copy(
+                         isRestoring = false, 
+                         restoreStatusText = "Permission required",
+                         authResolutionIntent = exception.pendingIntent,
+                         pendingAction = PendingAction.RESTORE
+                     )
+                 } else {
+                     uiState = BackupUiState(restoreError = "Permission check failed: ${exception?.message}", pendingAction = PendingAction.RESTORE)
+                 }
+                 return@launch
+            }
+
+            // 3. Perform Restore
+            val accessToken = authResult.getOrThrow()
+            performRestoreInternal(email, accessToken)
+        }
+    }
+
+    private suspend fun performRestoreInternal(email: String, accessToken: String) {
+        uiState = uiState.copy(isRestoring = true, restoreStatusText = "Restoring database...", authResolutionIntent = null)
+        
+        val result = repository.performRestore(email, accessToken)
+        
+        if (result.isSuccess && result.getOrNull() == true) {
+            uiState = BackupUiState(restoreSuccess = true, restoreStatusText = "Restore completed successfully")
+        } else if (result.isSuccess && result.getOrNull() == false) {
+            uiState = BackupUiState(restoreError = "No backup found in Google Drive")
+        } else {
+            Log.d("BackupOperation", "backupViewmodel restore: failed --${result.exceptionOrNull()?.message}")
+            uiState = BackupUiState(restoreError = "Restore failed: ${result.exceptionOrNull()?.message}")
         }
     }
 }

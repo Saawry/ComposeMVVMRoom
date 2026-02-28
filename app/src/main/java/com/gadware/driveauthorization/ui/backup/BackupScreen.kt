@@ -78,7 +78,7 @@ fun BackupScreen(viewModel: BackupViewModel) {
                         viewModel.onBackupClicked(activity)
                     }
                 },
-                enabled = !uiState.isBackingUp
+                enabled = !uiState.isBackingUp && !uiState.isRestoring
             ) {
                 Text("Backup to Google Drive")
             }
@@ -88,6 +88,49 @@ fun BackupScreen(viewModel: BackupViewModel) {
                 text = uiState.statusText,
                 style = MaterialTheme.typography.bodySmall
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // --- RESTORE SECTION ---
+            if (uiState.isRestoring) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = uiState.restoreStatusText, style = MaterialTheme.typography.bodyLarge)
+            } else {
+                if (uiState.restoreSuccess) {
+                    Text(
+                        text = "Restore Successful!",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                if (uiState.restoreError != null) {
+                    Text(
+                        text = uiState.restoreError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+    
+                Button(
+                    onClick = {
+                        if (activity != null) {
+                            viewModel.onRestoreClicked(activity)
+                        }
+                    },
+                    enabled = !uiState.isBackingUp && !uiState.isRestoring
+                ) {
+                    Text("Restore from Google Drive")
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = uiState.restoreStatusText,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
