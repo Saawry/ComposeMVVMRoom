@@ -90,7 +90,7 @@ class GoogleAuthManager(private val context: Context) {
         }
     }
 
-    suspend fun requestDriveAccess(activity: Activity, email: String): Result<Boolean> {
+    suspend fun requestDriveAccess(activity: Activity, email: String): Result<String> {
         val authorizationClient = Identity.getAuthorizationClient(activity)
         val requestedScopes = listOf(Scope(DriveScopes.DRIVE_APPDATA))
         
@@ -114,8 +114,13 @@ class GoogleAuthManager(private val context: Context) {
                 // The standard pattern is `registerForActivityResult`.
                 Result.failure(AuthResolutionRequiredException(result.pendingIntent))
             } else {
-                // Granted
-                Result.success(true)
+                // Granted, extract the access token
+                val accessToken = result.accessToken
+                if (accessToken != null) {
+                    Result.success(accessToken)
+                } else {
+                    Result.failure(Exception("Authorization succeeded but access token is null"))
+                }
             }
         } catch (e: ApiException) {
              Log.e("GoogleAuthManager", "Auth failed", e)

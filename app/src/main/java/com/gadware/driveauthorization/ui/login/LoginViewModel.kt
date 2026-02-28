@@ -59,26 +59,38 @@ class LoginViewModel(
                     return@launch
                 }
                 
-                performRestoreAndProceed(email)
+                val accessToken = authResult.getOrThrow()
+                performRestoreAndProceed(email, accessToken)
             } else {
                 loginState = LoginState.SuccessNotRegistered(email)
             }
         }
     }
 
-    fun onAuthResolutionResult(resultOk: Boolean, email: String) {
+    fun onAuthResolutionResult(resultOk: Boolean, email: String, activity: Activity) {
         viewModelScope.launch {
             if (resultOk) {
-                performRestoreAndProceed(email)
+                loginState = LoginState.LoadingMessage("Checking Drive permissions...")
+                val authResult = authManager.requestDriveAccess(activity, email)
+                if (authResult.isSuccess) {
+                    performRestoreAndProceed(email, authResult.getOrThrow())
+                } else {
+                    val exception = authResult.exceptionOrNull()
+                    if (exception is AuthResolutionRequiredException) {
+                         loginState = LoginState.RequiresAuthResolution(exception.pendingIntent, email)
+                    } else {
+                         loginState = LoginState.SuccessRegistered(email)
+                    }
+                }
             } else {
                 loginState = LoginState.SuccessRegistered(email)
             }
         }
     }
 
-    private suspend fun performRestoreAndProceed(email: String) {
+    private suspend fun performRestoreAndProceed(email: String, accessToken: String) {
         loginState = LoginState.LoadingMessage("Checking and restoring backup...")
-        backupRepository.performRestore(email)
+        backupRepository.performRestore(email, accessToken)
         loginState = LoginState.SuccessRegistered(email)
     }
 }

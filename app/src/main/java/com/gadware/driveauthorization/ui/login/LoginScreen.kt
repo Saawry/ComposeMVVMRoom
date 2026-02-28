@@ -30,7 +30,9 @@ fun LoginScreen(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (state is LoginState.RequiresAuthResolution) {
-            viewModel.onAuthResolutionResult(result.resultCode == Activity.RESULT_OK, state.email)
+            activity?.let {
+                viewModel.onAuthResolutionResult(result.resultCode == Activity.RESULT_OK, state.email, it)
+            }
         }
     }
 

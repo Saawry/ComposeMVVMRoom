@@ -62,7 +62,8 @@ class BackupViewModel(
             }
 
             // 3. Perform Backup
-            performBackupInternal(email)
+            val accessToken = authResult.getOrThrow()
+            performBackupInternal(email, accessToken)
         }
     }
 
@@ -86,10 +87,10 @@ class BackupViewModel(
     }
     
     // Using a separate internal function to avoid duplicating logic if needed
-    private suspend fun performBackupInternal(email: String) {
+    private suspend fun performBackupInternal(email: String, accessToken: String) {
         uiState = uiState.copy(isBackingUp = true, statusText = "Backing up database...", authResolutionIntent = null)
         
-        val result = repository.performBackup(email)
+        val result = repository.performBackup(email, accessToken)
         
         if (result.isSuccess) {
             uiState = BackupUiState(success = true, statusText = "Backup completed successfully")

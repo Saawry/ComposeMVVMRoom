@@ -18,10 +18,10 @@ class BackupRepository(
     private val authManager: GoogleAuthManager
 ) {
 
-    suspend fun performBackup(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun performBackup(email: String, accessToken: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             // 1. Initialize Drive Service
-            val driveHelper = DriveServiceHelper(context, email)
+            val driveHelper = DriveServiceHelper(context, accessToken)
 
             // 2. Checkpoint Database (Ensure all data is in the main .db file or synced)
             // Using a raw query to checkpoint
@@ -85,9 +85,9 @@ class BackupRepository(
         }
     }
 
-    suspend fun performRestore(email: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun performRestore(email: String, accessToken: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            val driveHelper = DriveServiceHelper(context, email)
+            val driveHelper = DriveServiceHelper(context, accessToken)
             
             val existingId = driveHelper.findBackupFile()
             Log.d("PerformRestore", "BackupRepository: existing id --${existingId}")

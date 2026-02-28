@@ -13,18 +13,16 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Collections
 
-class DriveServiceHelper(context: Context, email: String) {
+class DriveServiceHelper(context: Context, private val accessToken: String) {
 
-    private val credential = GoogleAccountCredential.usingOAuth2(
-        context, Collections.singleton(DriveScopes.DRIVE_APPDATA)
-    ).apply {
-        selectedAccountName = email
+    private val requestInitializer = com.google.api.client.http.HttpRequestInitializer { request ->
+        request.headers.authorization = "Bearer $accessToken"
     }
 
     private val driveService: Drive = Drive.Builder(
         NetHttpTransport(),
         GsonFactory.getDefaultInstance(),
-        credential
+        requestInitializer
     ).setApplicationName("DriveBackupApp").build()
 
     suspend fun findBackupFile(): String? = withContext(Dispatchers.IO) {
