@@ -35,6 +35,10 @@ import com.gadware.driveauthorization.ui.theme.DriveAuthorizationTheme
 import com.gadware.driveauthorization.ui.home.HomeScreen
 import com.gadware.driveauthorization.data.SessionManager
 import androidx.compose.runtime.LaunchedEffect
+import androidx.work.WorkManager
+import com.gadware.driveauthorization.ui.settings.SettingsScreen
+import com.gadware.driveauthorization.ui.settings.SettingsViewModel
+import com.gadware.driveauthorization.ui.settings.SettingsViewModelFactory
 
 enum class Screen { Login, Registration, Home, InsertData, Operation }
 
@@ -51,11 +55,13 @@ class MainActivity : ComponentActivity() {
         val userRepository = UserRepository()
         
         // Backup Feature Dependencies
-        val backupRepository = com.gadware.driveauthorization.data.BackupRepository(applicationContext, AppDatabase.getDatabase(this), authManager)
         val sessionManager = SessionManager(applicationContext)
-        val backupViewModelFactory = com.gadware.driveauthorization.ui.backup.BackupViewModelFactory(backupRepository, authManager, userRepository, sessionManager)
-
+        val workManager = WorkManager.getInstance(applicationContext)
+        
+        val settingsViewModelFactory = SettingsViewModelFactory(authManager, userRepository, sessionManager, workManager)
+        
         // Login Feature
+        val backupRepository = com.gadware.driveauthorization.data.BackupRepository(applicationContext, AppDatabase.getDatabase(this), authManager)
         val loginViewModelFactory = LoginViewModelFactory(authManager, userRepository, backupRepository)
 
         setContent {
@@ -114,13 +120,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 Screen.Operation -> {
-                    Column(Modifier.fillMaxSize()) {
-                        Button(onClick = { currentScreen = Screen.Home }, modifier = Modifier.padding(16.dp)) {
-                            Text("Back to Home")
-                        }
-                        val backupViewModel: com.gadware.driveauthorization.ui.backup.BackupViewModel = viewModel(factory = backupViewModelFactory)
-                        com.gadware.driveauthorization.ui.backup.BackupScreen(backupViewModel)
-                    }
+                    val settingsViewModel: SettingsViewModel = viewModel(factory = settingsViewModelFactory)
+                    SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onNavigateBack = { currentScreen = Screen.Home }
+                    )
                 }
             }
         }

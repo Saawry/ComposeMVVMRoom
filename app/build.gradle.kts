@@ -93,6 +93,11 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.lifecycle)
 
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    // Core KTX for Notifications
+    implementation("androidx.core:core-ktx:1.12.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
