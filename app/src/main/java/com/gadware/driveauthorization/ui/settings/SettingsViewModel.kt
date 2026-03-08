@@ -32,12 +32,14 @@ data class SettingsUiState(
     val driveEmail: String? = null,
     val lastBackupDateStr: String = "Never",
     val routineConfig: String = "Never",
+    val selectedRoutineConfig: String = "Never",
     val statusText: String = "",
     val isLoading: Boolean = false,
     val showAuthResolution: Boolean = false,
     val authResolutionIntent: PendingIntent? = null,
     val pendingAction: PendingAction? = null,
-    val error: String? = null
+    val error: String? = null,
+    val showExportDialog: Boolean = false
 )
 
 class SettingsViewModel(
@@ -69,6 +71,7 @@ class SettingsViewModel(
             userEmail = userEmail,
             lastBackupDateStr = dateStr,
             routineConfig = routineConfig,
+            selectedRoutineConfig = routineConfig,
             isLoading = true
         )
 
@@ -86,10 +89,13 @@ class SettingsViewModel(
     }
 
     fun onRoutineConfigChanged(newConfig: String) {
+        uiState = uiState.copy(selectedRoutineConfig = newConfig)
+    }
+
+    fun saveRoutineConfig() {
+        val newConfig = uiState.selectedRoutineConfig
         sessionManager.saveRoutineBackupConfig(newConfig)
-        uiState = uiState.copy(routineConfig = newConfig)
-        
-        // Schedule Work
+        uiState = uiState.copy(routineConfig = newConfig, statusText = "Backup schedule saved")
         scheduleRoutineBackup(newConfig)
     }
 
@@ -108,6 +114,51 @@ class SettingsViewModel(
             "Monthly" -> {
                 val request = PeriodicWorkRequestBuilder<BackupWorker>(30, TimeUnit.DAYS).build()
                 workManager.enqueueUniquePeriodicWork(workName, ExistingPeriodicWorkPolicy.UPDATE, request)
+            }
+        }
+    }
+
+    fun onExportDialogDismissed() {
+        uiState = uiState.copy(showExportDialog = false)
+    }
+
+    fun onExportClicked() {
+        uiState = uiState.copy(showExportDialog = true)
+    }
+
+    fun proceedWithExport(context: android.content.Context, mode: com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode) {
+        uiState = uiState.copy(showExportDialog = false, isLoading = true, statusText = "Exporting database...")
+        viewModelScope.launch {
+            try {
+                com.gadware.driveauthorization.ui.backup.UniversalBackupManager.createBackup(
+                    context,
+                    "name_db",
+                    "DriveAuthorization",
+                    mode
+                )
+                uiState = uiState.copy(isLoading = false, statusText = "Export completed successfully", error = null)
+            } catch (e: Exception) {
+                uiState = uiState.copy(isLoading = false, error = "Export failed: ${e.message}")
+            }
+        }
+    }
+
+    fun processLocalRestore(context: android.content.Context, uri: android.net.Uri) {
+        uiState = uiState.copy(isLoading = true, statusText = "Restoring local backup...", error = null)
+        viewModelScope.launch {
+            try {
+                com.gadware.driveauthorization.ui.backup.UniversalBackupManager.restoreLocalBackup(context, uri)
+                uiState = uiState.copy(isLoading = false, statusText = "Restore successful. Restarting...")
+                
+                // Restart app
+                val packageManager = context.packageManager
+                val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+                val componentName = intent?.component
+                val mainIntent = android.content.Intent.makeRestartActivityTask(componentName)
+                context.startActivity(mainIntent)
+                Runtime.getRuntime().exit(0)
+            } catch (e: Exception) {
+                uiState = uiState.copy(isLoading = false, error = "Local restore failed: ${e.message}")
             }
         }
     }

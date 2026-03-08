@@ -29,8 +29,13 @@ class RestoreWorker(
         val driveEmail = inputData.getString("DRIVE_EMAIL") ?: return Result.failure()
         val accessToken = inputData.getString("ACCESS_TOKEN") ?: return Result.failure()
 
-        // Set foreground info to show notification
-        setForeground(createForegroundInfo("Restoring data from Google Drive..."))
+        val dbFile = applicationContext.getDatabasePath("name_db")
+        val isLargeDb = dbFile.exists() && dbFile.length() > 5 * 1024 * 1024 // 5MB
+
+        // Set foreground info to show notification if DB is large
+        if (isLargeDb) {
+            setForeground(createForegroundInfo("Restoring large database from Google Drive..."))
+        }
 
         return try {
             val result = backupRepository.performRestore(driveEmail, accessToken)

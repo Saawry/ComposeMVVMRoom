@@ -34,6 +34,76 @@ fun SettingsScreen(viewModel: SettingsViewModel, onNavigateBack: () -> Unit) {
         }
     }
 
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.processLocalRestore(context, uri)
+        }
+    }
+
+    if (uiState.showExportDialog) {
+        var checkCsv by remember { mutableStateOf(false) }
+        var checkDb by remember { mutableStateOf(false) }
+        var checkMetadata by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { viewModel.onExportDialogDismissed() },
+            title = { Text("Export Database") },
+            text = {
+                Column {
+                    Text("Select what to include in the backup:")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = checkDb, onCheckedChange = { 
+                            checkDb = it
+                            if (!it) checkMetadata = false 
+                        })
+                        Text("DB File")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = checkCsv, onCheckedChange = { checkCsv = it })
+                        Text("CSV (All Tables)")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = checkMetadata, 
+                            onCheckedChange = { checkMetadata = it },
+                            enabled = checkDb
+                        )
+                        Text("Metadata JSON")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val mode = when {
+                            checkDb && checkCsv && checkMetadata -> com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode.FULL
+                            checkDb && checkCsv -> com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode.DB_AND_CSV
+                            checkDb && checkMetadata -> com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode.DB_AND_METADATA
+                            checkDb -> com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode.ONLY_DB
+                            checkCsv -> com.gadware.driveauthorization.ui.backup.UniversalBackupManager.BackupMode.ONLY_CSV
+                            else -> null
+                        }
+                        if (mode != null) {
+                            viewModel.proceedWithExport(context, mode)
+                        } else {
+                            viewModel.onExportDialogDismissed()
+                        }
+                    },
+                    enabled = checkDb || checkCsv
+                ) {
+                    Text("Export")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onExportDialogDismissed() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,40 +146,80 @@ fun SettingsScreen(viewModel: SettingsViewModel, onNavigateBack: () -> Unit) {
                     val options = listOf("Never", "Daily", "Weekly", "Monthly")
                     var expanded by remember { mutableStateOf(false) }
 
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            value = uiState.routineConfig,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Schedule") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            options.forEach { selectionOption ->
-                                DropdownMenuItem(
-                                    text = { Text(selectionOption) },
-                                    onClick = {
-                                        viewModel.onRoutineConfigChanged(selectionOption)
-                                        expanded = false
-                                    }
-                                )
+                            OutlinedTextField(
+                                value = uiState.selectedRoutineConfig,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Schedule") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                options.forEach { selectionOption ->
+                                    DropdownMenuItem(
+                                        text = { Text(selectionOption) },
+                                        onClick = {
+                                            viewModel.onRoutineConfigChanged(selectionOption)
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
+                        }
+                        
+                        Button(
+                            onClick = { viewModel.saveRoutineConfig() },
+                            enabled = uiState.routineConfig != uiState.selectedRoutineConfig
+                        ) {
+                            Text("Save")
                         }
                     }
                 }
             }
 
-            // Manual Operations Section
+            // Local Operations Section
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Manual Operations", style = MaterialTheme.typography.titleMedium)
+                    Text("Local Backup & Restore", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = { viewModel.onExportClicked() },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Export Database")
+                        }
+                        Button(
+                            onClick = { restoreLauncher.launch("application/zip") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Manual Restore")
+                        }
+                    }
+                }
+            }
+
+            // Manual Operations Section (Drive)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Drive Backup & Restore", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     if (uiState.isLoading) {
@@ -124,13 +234,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, onNavigateBack: () -> Unit) {
                                 onClick = { activity?.let { viewModel.onManualBackupClicked(it) } },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Backup Now")
+                                Text("Backup to Drive")
                             }
                             Button(
                                 onClick = { activity?.let { viewModel.onManualRestoreClicked(it) } },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Restore")
+                                Text("Restore from Drive")
                             }
                         }
                         

@@ -26,6 +26,7 @@ class BackupRepository(
             // 2. Checkpoint Database (Ensure all data is in the main .db file or synced)
             // Using a raw query to checkpoint
             database.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(FULL)").close()
+            database.close()
 
             // 3. Identify DB files
             val dbName = "name_db"
